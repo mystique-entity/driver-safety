@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Driver Safety Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #121212;
+            color: white;
+            text-align: center;
+        }
+
+        video {
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+
+        .status {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        .safe { color: #00ff88; }
+        .alert { color: #ff4c4c; }
+    </style>
+</head>
+<body>
+
+    <h1>🚗 Driver Safety Dashboard</h1>
+
+    <video id="video" width="400" autoplay></video>
+
+    <div class="status" id="statusText">Monitoring...</div>
+    <div>Alert Count: <span id="alertCount">0</span></div>
+
+    <script>
+        const video = document.getElementById("video");
+        const statusText = document.getElementById("statusText");
+        const alertCount = document.getElementById("alertCount");
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream);
+
+        function captureAndSend() {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0);
+
+            const image = canvas.toDataURL("image/jpeg");
+
+            fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: image })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alertCount.innerText = data.alerts;
+
+                if (data.status === "SAFE") {
+                    statusText.innerText = "SAFE";
+                    statusText.className = "status safe";
+                } else {
+                    statusText.innerText = "DROWSY ALERT!";
+                    statusText.className = "status alert";
+                }
+            });
+        }
+
+        setInterval(captureAndSend, 3000); // every 3 seconds
+    </script>
+
+</body>
+</html>
