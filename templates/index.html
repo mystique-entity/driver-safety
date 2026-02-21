@@ -2,51 +2,121 @@
 <html>
 <head>
     <title>Driver Safety Dashboard</title>
+
     <style>
         body {
-            font-family: Arial;
-            background: #121212;
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             color: white;
             text-align: center;
         }
 
+        h1 {
+            margin-top: 25px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
         video {
             margin-top: 20px;
-            border-radius: 10px;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(0,255,136,0.3);
         }
 
         .status {
-            font-size: 24px;
+            font-size: 26px;
             margin-top: 20px;
+            font-weight: bold;
+            transition: 0.3s ease;
         }
 
-        .safe { color: #00ff88; }
-        .alert { color: #ff4c4c; }
+        .safe {
+            color: #00ff88;
+        }
+
+        .alert {
+            color: #ff4c4c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        .cards-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
 
         .card {
-            margin-top: 20px;
-            padding: 15px;
-            background: #1f1f1f;
-            width: 300px;
-            margin-left: auto;
-            margin-right: auto;
-            border-radius: 10px;
+            padding: 25px;
+            width: 220px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            transition: 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+
+        .card h3 {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 14px;
+            opacity: 0.6;
         }
     </style>
 </head>
+
 <body>
 
-    <h1>🚗 Driver Safety Dashboard</h1>
+<h1>🚗 AI Driver Safety Monitoring System</h1>
 
-    <video id="video" width="400" autoplay></video>
+<video id="video" width="420" autoplay></video>
 
-    <div class="status" id="statusText">Monitoring...</div>
+<div class="status safe" id="statusText">🟢 Monitoring...</div>
+
+<div class="cards-container">
 
     <div class="card">
-        <p>Alert Count: <span id="alertCount">0</span></p>
-        <p>Total Checks: <span id="totalChecks">0</span></p>
-        <p>Safety Score: <span id="safetyScore">100</span>%</p>
+        <h3>🚨 Alert Count</h3>
+        <div class="value" id="alertCount">0</div>
     </div>
+
+    <div class="card">
+        <h3>👁 Total Checks</h3>
+        <div class="value" id="totalChecks">0</div>
+    </div>
+
+    <div class="card">
+        <h3>🛡 Safety Score</h3>
+        <div class="value"><span id="safetyScore">100</span>%</div>
+    </div>
+
+</div>
+
+<div class="footer">
+    Real-time AI Drowsiness Detection • Computer Vision Powered
+</div>
 
 <script>
     const video = document.getElementById("video");
@@ -75,10 +145,10 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === "SAFE") {
-                statusText.innerText = "SAFE";
+                statusText.innerText = "🟢 SAFE";
                 statusText.className = "status safe";
             } else {
-                statusText.innerText = "DROWSY ALERT!";
+                statusText.innerText = "🔴 DROWSY ALERT!";
                 statusText.className = "status alert";
             }
         });
@@ -94,8 +164,8 @@
         });
     }
 
-    setInterval(captureAndSend, 5000);
-    setInterval(fetchSummary, 5000);
+    setInterval(captureAndSend, 4000);
+    setInterval(fetchSummary, 4000);
 
 </script>
 

@@ -282,21 +282,46 @@ def analytics():
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    # Driver drowsy events
+    # 1️⃣ Session-wise performance
     c.execute("""
-        SELECT event_time, occupation, route
-        FROM drowsy_logs
-        WHERE session_id IN (
-            SELECT id FROM sessions WHERE user_id=?
-        )
-        ORDER BY event_time DESC
+        SELECT start_time, occupation, route,
+               total_checks, drowsy_events, predictive_risk
+        FROM sessions
+        WHERE user_id=?
+        ORDER BY id DESC
     """, (session["user_id"],))
+    sessions_data = c.fetchall()
 
-    events = c.fetchall()
+    # 2️⃣ Overall totals
+    c.execute("""
+        SELECT SUM(total_checks), SUM(drowsy_events)
+        FROM sessions
+        WHERE user_id=?
+    """, (session["user_id"],))
+    totals = c.fetchone()
+
+    total_checks = totals[0] if totals[0] else 0
+    total_drowsy = totals[1] if totals[1] else 0
+
+    overall_safety = round((1 - total_drowsy/total_checks) * 100, 2) if total_checks > 0 else 100
+
+    # 3️⃣ Risk distribution
+    c.execute("""
+        SELECT predictive_risk, COUNT(*)
+        FROM sessions
+        WHERE user_id=?
+        GROUP BY predictive_risk
+    """, (session["user_id"],))
+    risk_distribution = c.fetchall()
 
     conn.close()
 
-    return render_template("analytics.html", events=events)
+    return render_template("analytics.html",
+                           sessions=sessions_data,
+                           total_checks=total_checks,
+                           total_drowsy=total_drowsy,
+                           overall_safety=overall_safety,
+                           risk_distribution=risk_distribution)
 
 # ---------------- DEMO DATA ----------------
 @app.route("/generate-full-demo-data")

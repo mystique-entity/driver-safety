@@ -1,66 +1,121 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Driver Safety Login</title>
+    <title>Driver Safety System</title>
     <style>
         body {
-            font-family: Arial;
-            background-color: #121212;
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             color: white;
-            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            font-size: 32px;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .card {
-            background-color: #1f1f1f;
-            padding: 30px;
-            margin: 40px auto;
-            width: 300px;
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            padding: 35px;
+            width: 320px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            transition: 0.3s ease;
         }
 
-        input {
-            width: 90%;
-            padding: 8px;
-            margin: 8px 0;
-            border-radius: 5px;
-            border: none;
-        }
-
-        button {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            background-color: #00c853;
-            color: white;
-            cursor: pointer;
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
         }
 
         h2 {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            font-weight: 500;
         }
 
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            background-color: #1f1f1f;
+            color: white;
+        }
+
+        input:focus {
+            border: 1px solid #00ff88;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #00c853, #00ff88);
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background: linear-gradient(90deg, #00ff88, #00c853);
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 15px;
+            font-size: 14px;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
 
-<h1>🚗 Driver Safety System</h1>
+<h1>🚗 Driver Safety System 🛣️</h1>
 
-<div class="card">
-    <h2>Login</h2>
-    <form action="/login" method="POST">
-        <input type="text" name="username" placeholder="Username" required><br>
-        <input type="password" name="password" placeholder="Password" required><br>
-        <button type="submit">Login</button>
-    </form>
+<div class="container">
+
+    <div class="card">
+        <h2>🔐 Login</h2>
+        <form action="/login" method="POST">
+            <input type="text" name="username" placeholder="👤 Username" required>
+            <input type="password" name="password" placeholder="🔑 Password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>📝 Register</h2>
+        <form action="/register" method="POST">
+            <input type="text" name="username" placeholder="👤 New Username" required>
+            <input type="password" name="password" placeholder="🔑 New Password" required>
+            <button type="submit">Register</button>
+        </form>
+    </div>
+
 </div>
 
-<div class="card">
-    <h2>Register</h2>
-    <form action="/register" method="POST">
-        <input type="text" name="username" placeholder="New Username" required><br>
-        <input type="password" name="password" placeholder="New Password" required><br>
-        <button type="submit">Register</button>
-    </form>
+<div class="footer">
+    Built with 💙 using Computer Vision & AI
 </div>
 
 </body>

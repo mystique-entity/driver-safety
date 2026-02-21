@@ -2,47 +2,136 @@
 <html>
 <head>
 <title>Driver Safety Dashboard</title>
+
 <style>
-body { font-family: Arial; background:#121212; color:white; text-align:center; }
-.card { background:#1f1f1f; padding:20px; margin:20px auto; width:400px; border-radius:10px; }
-button { padding:10px 20px; border:none; border-radius:6px; background:#00c853; color:white; cursor:pointer; }
-video { border-radius:10px; margin-top:20px; }
-.safe { color:#00ff88; }
-.alert { color:#ff4c4c; font-weight:bold; }
-a { color:#00ff88; text-decoration:none; }
-input { padding:8px; margin:5px; width:90%; border-radius:6px; border:none; }
+body {
+    margin:0;
+    font-family:'Segoe UI',Arial;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    color:white;
+    text-align:center;
+}
+
+h1 {
+    margin-top:30px;
+    letter-spacing:1px;
+}
+
+.card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(15px);
+    padding:25px;
+    margin:25px auto;
+    width:420px;
+    border-radius:15px;
+    box-shadow:0 0 25px rgba(0,255,136,0.2);
+    transition:0.3s;
+}
+
+.card:hover {
+    transform:translateY(-5px);
+    box-shadow:0 0 35px rgba(0,255,136,0.5);
+}
+
+input {
+    padding:10px;
+    margin:8px;
+    width:90%;
+    border-radius:8px;
+    border:none;
+    background:#1f1f1f;
+    color:white;
+}
+
+input:focus {
+    outline:none;
+    border:1px solid #00ff88;
+}
+
+button {
+    padding:12px 20px;
+    border:none;
+    border-radius:8px;
+    background:linear-gradient(90deg,#00c853,#00ff88);
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover {
+    transform:scale(1.05);
+}
+
+video {
+    border-radius:15px;
+    margin-top:20px;
+    box-shadow:0 0 25px rgba(0,255,136,0.4);
+}
+
+.safe {
+    color:#00ff88;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.alert {
+    color:#ff4c4c;
+    font-size:22px;
+    font-weight:bold;
+    animation:pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform:scale(1); }
+    50% { transform:scale(1.08); }
+    100% { transform:scale(1); }
+}
+
+.analytics p {
+    font-size:18px;
+    margin:8px 0;
+}
+
+a {
+    color:#00ff88;
+    text-decoration:none;
+}
+
+a:hover {
+    text-decoration:underline;
+}
 </style>
 </head>
+
 <body>
 
-<h1>🚗 Driver Safety Dashboard</h1>
+<h1>🚗 AI Driver Safety Dashboard</h1>
 
 <div class="card">
-<h3>Enter Driving Details</h3>
-<input type="text" id="occupation" placeholder="Occupation">
-<input type="text" id="route" placeholder="Route">
+<h3>🛣 Enter Driving Details</h3>
+<input type="text" id="occupation" placeholder="👤 Occupation">
+<input type="text" id="route" placeholder="📍 Route">
 <br><br>
 <button onclick="startSession()">Start Monitoring</button>
 </div>
 
-<video id="video" width="400" autoplay></video>
+<video id="video" width="420" autoplay></video>
 
 <div class="card">
-<h2>Status</h2>
+<h2>🚦 Live Status</h2>
 <div id="statusText">Waiting...</div>
 <div id="predictiveText"></div>
 </div>
 
-<div class="card">
-<h2>Live Analytics</h2>
+<div class="card analytics">
+<h2>📊 Live Analytics</h2>
 <p>Total Checks: <span id="totalChecks">0</span></p>
 <p>Drowsy Events: <span id="alertCount">0</span></p>
 <p>Safety Score: <span id="safetyScore">100</span>%</p>
 </div>
 
 <div class="card">
-<a href="/generate-full-demo-data">Generate Demo Data</a><br><br>
-<a href="/analytics">View Analytics</a>
+<a href="/analytics">📈 View Full Analytics</a>
 </div>
 
 <script>
@@ -55,7 +144,11 @@ const safetyScore = document.getElementById("safetyScore");
 
 let monitoring = false;
 
-// Camera
+/* 🔔 LOCAL BUZZER */
+let alarmSound = new Audio("/static/alarm.mp3");
+alarmSound.loop = true;
+
+// Camera Access
 navigator.mediaDevices.getUserMedia({ video: true })
 .then(stream => video.srcObject = stream)
 .catch(err => alert("Camera access denied"));
@@ -77,7 +170,7 @@ async function startSession() {
         predictiveText.innerHTML = "⚠ HIGH PREDICTIVE RISK";
         predictiveText.className = "alert";
     } else {
-        predictiveText.innerHTML = "Predictive Risk: LOW";
+        predictiveText.innerHTML = "🟢 Predictive Risk: LOW";
         predictiveText.className = "safe";
     }
 
@@ -105,11 +198,14 @@ async function processFrame() {
     const analyzeData = await analyzeRes.json();
 
     if (analyzeData.status === "SAFE") {
-        statusText.innerText = "SAFE";
+        statusText.innerText = "🟢 SAFE";
         statusText.className = "safe";
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
     } else {
-        statusText.innerText = "DROWSY ALERT!";
+        statusText.innerText = "🔴 DROWSY ALERT!";
         statusText.className = "alert";
+        alarmSound.play();
     }
 
     const summaryRes = await fetch("/summary");
