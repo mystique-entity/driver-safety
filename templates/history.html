@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Session History</title>
+    <style>
+        body { font-family: Arial; background:#121212; color:white; text-align:center; }
+        table { margin:30px auto; border-collapse:collapse; }
+        th, td { padding:10px 20px; border:1px solid #444; }
+        a { color:#00ff88; text-decoration:none; }
+    </style>
+</head>
+<body>
+
+<h1>📊 Your Session History</h1>
+
+<table>
+<tr>
+    <th>Session ID</th>
+    <th>Start Time</th>
+    <th>Report</th>
+</tr>
+
+{% for s in sessions %}
+<tr>
+    <td>{{ s[0] }}</td>
+    <td>{{ s[1] }}</td>
+    <td><a href="/report/{{ s[0] }}">View</a></td>
+</tr>
+{% endfor %}
+
+</table>
+
+</body>
+</html>

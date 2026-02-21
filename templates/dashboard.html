@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <style>
+        body { font-family: Arial; background:#121212; color:white; text-align:center; }
+        .card { background:#1f1f1f; padding:20px; margin:20px auto; width:350px; border-radius:10px; }
+        button { padding:10px 20px; border:none; border-radius:5px; background:#00c853; color:white; cursor:pointer; margin-top:10px; }
+        video { margin-top:20px; border-radius:10px; }
+        .safe { color:#00ff88; }
+        .alert { color:#ff4c4c; }
+        a { color:#00ff88; text-decoration:none; }
+    </style>
+</head>
+<body>
+
+<h1>🚗 Monitoring Dashboard</h1>
+
+<div class="card">
+    <button onclick="startSession()">Start Monitoring</button>
+    <br><br>
+    <a href="/history">View Session History</a>
+</div>
+
+<video id="video" width="400" autoplay></video>
+
+<div class="card">
+    <h2>Status</h2>
+    <div id="statusText">Waiting...</div>
+</div>
+
+<div class="card">
+    <h2>Live Analytics</h2>
+    <p>Total Checks: <span id="totalChecks">0</span></p>
+    <p>Drowsy Events: <span id="alertCount">0</span></p>
+    <p>Safety Score: <span id="safetyScore">100</span>%</p>
+</div>
+
+<script>
+    const video = document.getElementById("video");
+    const statusText = document.getElementById("statusText");
+    const alertCount = document.getElementById("alertCount");
+    const totalChecks = document.getElementById("totalChecks");
+    const safetyScore = document.getElementById("safetyScore");
+
+    let monitoring = false;
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => video.srcObject = stream);
+
+    async function startSession() {
+        const res = await fetch("/start-session", { method: "POST" });
+        const data = await res.json();
+        monitoring = true;
+        processFrame();
+    }
+
+    async function processFrame() {
+        if (!monitoring) return;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        const image = canvas.toDataURL("image/jpeg");
+
+        const analyzeRes = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: image })
+        });
+
+        const analyzeData = await analyzeRes.json();
+
+        if (analyzeData.status === "SAFE") {
+            statusText.innerText = "SAFE";
+            statusText.className = "safe";
+        } else {
+            statusText.innerText = "DROWSY ALERT!";
+            statusText.className = "alert";
+        }
+
+        const summaryRes = await fetch("/summary");
+        const summaryData = await summaryRes.json();
+
+        totalChecks.innerText = summaryData.total_checks;
+        alertCount.innerText = summaryData.drowsy_events;
+        safetyScore.innerText = summaryData.safety_score;
+
+        setTimeout(processFrame, 6000);
+    }
+</script>
+
+</body>
+</html>

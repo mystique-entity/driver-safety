@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Session Report</title>
+    <style>
+        body { font-family: Arial; background:#121212; color:white; text-align:center; }
+        .card { background:#1f1f1f; padding:20px; margin:30px auto; width:400px; border-radius:10px; }
+        button { padding:8px 15px; border:none; border-radius:5px; background:#00c853; color:white; cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<h1>📊 Session Report</h1>
+
+<div class="card">
+    <p><strong>Session ID:</strong> {{ session_id }}</p>
+    <p><strong>Start Time:</strong> {{ start_time }}</p>
+    <p><strong>Total Checks:</strong> {{ total }}</p>
+    <p><strong>Drowsy Events:</strong> {{ drowsy }}</p>
+    <p><strong>Safety Score:</strong> {{ safety_score }}%</p>
+    <p><strong>Risk Level:</strong> {{ risk }}</p>
+
+    <br>
+    <a href="/download/{{ session_id }}">
+        <button>Download CSV Report</button>
+    </a>
+</div>
+
+</body>
+</html>

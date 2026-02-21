@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Driver Safety Login</title>
+    <style>
+        body {
+            font-family: Arial;
+            background-color: #121212;
+            color: white;
+            text-align: center;
+        }
+
+        .card {
+            background-color: #1f1f1f;
+            padding: 30px;
+            margin: 40px auto;
+            width: 300px;
+            border-radius: 10px;
+        }
+
+        input {
+            width: 90%;
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #00c853;
+            color: white;
+            cursor: pointer;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+<h1>🚗 Driver Safety System</h1>
+
+<div class="card">
+    <h2>Login</h2>
+    <form action="/login" method="POST">
+        <input type="text" name="username" placeholder="Username" required><br>
+        <input type="password" name="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Register</h2>
+    <form action="/register" method="POST">
+        <input type="text" name="username" placeholder="New Username" required><br>
+        <input type="password" name="password" placeholder="New Password" required><br>
+        <button type="submit">Register</button>
+    </form>
+</div>
+
+</body>
+</html>
