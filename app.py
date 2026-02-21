@@ -1,19 +1,20 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+import sqlite3
+import base64
 import cv2
 import numpy as np
-import base64
-import sqlite3
-import datetime
+import mediapipe as mp
+from datetime import datetime
+import time
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = "driver_safety_secret_key"
 
-current_session_id = None
+DATABASE = "driver_data.db"
 
-# ---------------- DATABASE SETUP ----------------
-
+# ---------------- DATABASE ----------------
 def init_db():
-    conn = sqlite3.connect("driver_data.db")
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
     c.execute("""
@@ -28,16 +29,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
-            start_time TEXT
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER,
-            status TEXT,
-            timestamp TEXT
+            start_time TEXT,
+            total_checks INTEGER DEFAULT 0,
+            drowsy_events INTEGER DEFAULT 0
         )
     """)
 
@@ -46,48 +40,73 @@ def init_db():
 
 init_db()
 
-# ---------------- AUTH ----------------
+# ---------------- MEDIAPIPE SETUP ----------------
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True)
+
+LEFT_EYE = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE = [362, 385, 387, 263, 373, 380]
+
+closed_start_time = None
+
+def eye_aspect_ratio(landmarks, eye_indices):
+    p1 = landmarks[eye_indices[0]]
+    p2 = landmarks[eye_indices[1]]
+    p3 = landmarks[eye_indices[2]]
+    p4 = landmarks[eye_indices[3]]
+    p5 = landmarks[eye_indices[4]]
+    p6 = landmarks[eye_indices[5]]
+
+    vertical1 = np.linalg.norm(np.array(p2) - np.array(p6))
+    vertical2 = np.linalg.norm(np.array(p3) - np.array(p5))
+    horizontal = np.linalg.norm(np.array(p1) - np.array(p4))
+
+    return (vertical1 + vertical2) / (2.0 * horizontal)
+
+# ---------------- ROUTES ----------------
 
 @app.route("/")
 def home():
     return render_template("login.html")
+
 
 @app.route("/register", methods=["POST"])
 def register():
     username = request.form["username"]
     password = request.form["password"]
 
-    conn = sqlite3.connect("driver_data.db")
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
     try:
-        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)",
+                  (username, password))
         conn.commit()
     except:
+        conn.close()
         return "User already exists"
 
     conn.close()
     return redirect(url_for("home"))
+
 
 @app.route("/login", methods=["POST"])
 def login():
     username = request.form["username"]
     password = request.form["password"]
 
-    conn = sqlite3.connect("driver_data.db")
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-
-    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    c.execute("SELECT id FROM users WHERE username=? AND password=?",
+              (username, password))
     user = c.fetchone()
     conn.close()
 
     if user:
         session["user_id"] = user[0]
         return redirect(url_for("dashboard"))
-    else:
-        return "Invalid credentials"
+    return "Invalid Credentials"
 
-# ---------------- DASHBOARD ----------------
 
 @app.route("/dashboard")
 def dashboard():
@@ -95,169 +114,136 @@ def dashboard():
         return redirect(url_for("home"))
     return render_template("dashboard.html")
 
+
 @app.route("/start-session", methods=["POST"])
 def start_session():
-    global current_session_id
-
     if "user_id" not in session:
-        return jsonify({"error": "Login required"}), 401
+        return jsonify({"error": "Not logged in"}), 403
 
-    user_id = session["user_id"]
-
-    conn = sqlite3.connect("driver_data.db")
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    start_time = str(datetime.datetime.now())
-    c.execute("INSERT INTO sessions (user_id, start_time) VALUES (?, ?)", (user_id, start_time))
-    current_session_id = c.lastrowid
+    c.execute("""
+        INSERT INTO sessions (user_id, start_time)
+        VALUES (?, ?)
+    """, (session["user_id"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
     conn.commit()
+    session["session_id"] = c.lastrowid
     conn.close()
 
-    return jsonify({"session_id": current_session_id})
+    return jsonify({"message": "Session started"})
+
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    global current_session_id
+    global closed_start_time
 
-    if current_session_id is None:
-        return jsonify({"error": "Start session first"}), 400
+    if "session_id" not in session:
+        return jsonify({"error": "No active session"}), 400
 
     data = request.json["image"]
+    encoded_data = data.split(",")[1]
+    np_arr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    image_data = base64.b64decode(data.split(",")[1])
-    np_arr = np.frombuffer(image_data, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb_frame)
 
     status = "SAFE"
-    if len(faces) == 0:
-        status = "DROWSY"
+    drowsy = 0
 
-    conn = sqlite3.connect("driver_data.db")
+    if results.multi_face_landmarks:
+        face_landmarks = results.multi_face_landmarks[0]
+        h, w, _ = frame.shape
+
+        landmarks = []
+        for lm in face_landmarks.landmark:
+            landmarks.append((int(lm.x * w), int(lm.y * h)))
+
+        left_ear = eye_aspect_ratio(landmarks, LEFT_EYE)
+        right_ear = eye_aspect_ratio(landmarks, RIGHT_EYE)
+        ear = (left_ear + right_ear) / 2.0
+
+        if ear < 0.22:
+            if closed_start_time is None:
+                closed_start_time = time.time()
+            elif time.time() - closed_start_time > 1:
+                status = "DROWSY"
+                drowsy = 1
+        else:
+            closed_start_time = None
+    else:
+        closed_start_time = None
+
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    c.execute(
-        "INSERT INTO events (session_id, status, timestamp) VALUES (?, ?, ?)",
-        (current_session_id, status, str(datetime.datetime.now()))
-    )
+    c.execute("""
+        UPDATE sessions
+        SET total_checks = total_checks + 1,
+            drowsy_events = drowsy_events + ?
+        WHERE id = ?
+    """, (drowsy, session["session_id"]))
 
     conn.commit()
     conn.close()
 
     return jsonify({"status": status})
 
+
 @app.route("/summary")
 def summary():
-    global current_session_id
+    if "session_id" not in session:
+        return jsonify({"error": "No session"}), 400
 
-    if current_session_id is None:
-        return jsonify({"message": "No active session"})
-
-    conn = sqlite3.connect("driver_data.db")
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-
-    c.execute("SELECT COUNT(*) FROM events WHERE session_id=?", (current_session_id,))
-    total = c.fetchone()[0]
-
-    c.execute("SELECT COUNT(*) FROM events WHERE session_id=? AND status='DROWSY'", (current_session_id,))
-    drowsy = c.fetchone()[0]
-
+    c.execute("SELECT total_checks, drowsy_events FROM sessions WHERE id=?",
+              (session["session_id"],))
+    row = c.fetchone()
     conn.close()
 
-    safety_score = round((1 - (drowsy/total)) * 100, 2) if total > 0 else 100
+    total = row[0]
+    drowsy = row[1]
+
+    safety = 100
+    if total > 0:
+        safety = round((1 - drowsy/total) * 100, 2)
 
     return jsonify({
-        "session_id": current_session_id,
         "total_checks": total,
         "drowsy_events": drowsy,
-        "safety_score": safety_score
+        "safety_score": safety
     })
 
-# ---------------- REPORTS ----------------
 
 @app.route("/history")
 def history():
     if "user_id" not in session:
         return redirect(url_for("home"))
 
-    user_id = session["user_id"]
-
-    conn = sqlite3.connect("driver_data.db")
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
-    c.execute("SELECT id, start_time FROM sessions WHERE user_id=? ORDER BY id DESC", (user_id,))
-    sessions = c.fetchall()
+    c.execute("""
+        SELECT start_time, total_checks, drowsy_events
+        FROM sessions
+        WHERE user_id=?
+        ORDER BY id DESC
+    """, (session["user_id"],))
 
+    data = c.fetchall()
     conn.close()
 
-    return render_template("history.html", sessions=sessions)
+    return render_template("history.html", sessions=data)
 
-@app.route("/report/<int:session_id>")
-def report(session_id):
-    conn = sqlite3.connect("driver_data.db")
-    c = conn.cursor()
 
-    c.execute("SELECT start_time FROM sessions WHERE id=?", (session_id,))
-    session_data = c.fetchone()
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("home"))
 
-    if not session_data:
-        return "Session not found"
-
-    start_time = session_data[0]
-
-    c.execute("SELECT COUNT(*) FROM events WHERE session_id=?", (session_id,))
-    total = c.fetchone()[0]
-
-    c.execute("SELECT COUNT(*) FROM events WHERE session_id=? AND status='DROWSY'", (session_id,))
-    drowsy = c.fetchone()[0]
-
-    conn.close()
-
-    safety_score = round((1 - (drowsy/total)) * 100, 2) if total > 0 else 100
-
-    if safety_score > 85:
-        risk = "LOW RISK"
-    elif safety_score > 60:
-        risk = "MODERATE RISK"
-    else:
-        risk = "HIGH RISK"
-
-    return render_template(
-        "report.html",
-        session_id=session_id,
-        start_time=start_time,
-        total=total,
-        drowsy=drowsy,
-        safety_score=safety_score,
-        risk=risk
-    )
-
-@app.route("/download/<int:session_id>")
-def download(session_id):
-
-    conn = sqlite3.connect("driver_data.db")
-    c = conn.cursor()
-
-    c.execute("SELECT status, timestamp FROM events WHERE session_id=?", (session_id,))
-    rows = c.fetchall()
-
-    conn.close()
-
-    def generate():
-        yield "Status,Timestamp\n"
-        for row in rows:
-            yield f"{row[0]},{row[1]}\n"
-
-    return Response(generate(), mimetype="text/csv",
-                    headers={"Content-Disposition": f"attachment;filename=session_{session_id}.csv"})
 
 if __name__ == "__main__":
-    app.run(threaded=True)
+    app.run(debug=True)
