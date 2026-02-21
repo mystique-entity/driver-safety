@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drowsy Event Analytics</title>
+    <style>
+        body {
+            background: #121212;
+            color: white;
+            font-family: Arial;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 30px;
+        }
+
+        table {
+            margin: 30px auto;
+            border-collapse: collapse;
+            width: 80%;
+            max-width: 800px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #444;
+        }
+
+        th {
+            background-color: #1f1f1f;
+        }
+
+        tr:nth-child(even) {
+            background-color: #1a1a1a;
+        }
+
+        .no-data {
+            margin-top: 40px;
+            font-size: 18px;
+            color: #ff9800;
+        }
+
+        a {
+            color: #00ff88;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<h1>📊 Drowsy Event Timeline</h1>
+
+{% if events and events|length > 0 %}
+
+<table>
+    <tr>
+        <th>Event Time</th>
+        <th>Occupation</th>
+        <th>Route</th>
+    </tr>
+
+    {% for e in events %}
+    <tr>
+        <td>{{ e[0] }}</td>
+        <td>{{ e[1] }}</td>
+        <td>{{ e[2] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% else %}
+
+<div class="no-data">
+    No drowsy events recorded yet.
+</div>
+
+{% endif %}
+
+<br>
+<a href="/dashboard">⬅ Back to Dashboard</a>
+
+</body>
+</html>

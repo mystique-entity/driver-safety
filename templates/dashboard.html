@@ -1,174 +1,125 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Driver Monitoring Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #121212;
-            color: white;
-            text-align: center;
-        }
-
-        .card {
-            background: #1f1f1f;
-            padding: 20px;
-            margin: 20px auto;
-            width: 400px;
-            border-radius: 10px;
-        }
-
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            background: #00c853;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        button:hover {
-            background: #00a843;
-        }
-
-        video {
-            margin-top: 20px;
-            border-radius: 10px;
-            border: 3px solid #00c853;
-        }
-
-        .safe {
-            color: #00ff88;
-            font-weight: bold;
-        }
-
-        .alert {
-            color: #ff4c4c;
-            font-weight: bold;
-        }
-
-        a {
-            color: #00ff88;
-            text-decoration: none;
-        }
-    </style>
+<title>Driver Safety Dashboard</title>
+<style>
+body { font-family: Arial; background:#121212; color:white; text-align:center; }
+.card { background:#1f1f1f; padding:20px; margin:20px auto; width:400px; border-radius:10px; }
+button { padding:10px 20px; border:none; border-radius:6px; background:#00c853; color:white; cursor:pointer; }
+video { border-radius:10px; margin-top:20px; }
+.safe { color:#00ff88; }
+.alert { color:#ff4c4c; font-weight:bold; }
+a { color:#00ff88; text-decoration:none; }
+input { padding:8px; margin:5px; width:90%; border-radius:6px; border:none; }
+</style>
 </head>
-
 <body>
 
-<h1>🚗 Driver Safety Monitoring</h1>
+<h1>🚗 Driver Safety Dashboard</h1>
 
 <div class="card">
-    <button id="startBtn">Start Monitoring</button>
-    <br><br>
-    <a href="/history">View Session History</a>
+<h3>Enter Driving Details</h3>
+<input type="text" id="occupation" placeholder="Occupation">
+<input type="text" id="route" placeholder="Route">
+<br><br>
+<button onclick="startSession()">Start Monitoring</button>
 </div>
 
 <video id="video" width="400" autoplay></video>
 
 <div class="card">
-    <h2>Status</h2>
-    <div id="statusText">Waiting...</div>
+<h2>Status</h2>
+<div id="statusText">Waiting...</div>
+<div id="predictiveText"></div>
 </div>
 
 <div class="card">
-    <h2>Live Analytics</h2>
-    <p>Total Checks: <span id="totalChecks">0</span></p>
-    <p>Drowsy Events: <span id="alertCount">0</span></p>
-    <p>Safety Score: <span id="safetyScore">100</span>%</p>
+<h2>Live Analytics</h2>
+<p>Total Checks: <span id="totalChecks">0</span></p>
+<p>Drowsy Events: <span id="alertCount">0</span></p>
+<p>Safety Score: <span id="safetyScore">100</span>%</p>
+</div>
+
+<div class="card">
+<a href="/generate-full-demo-data">Generate Demo Data</a><br><br>
+<a href="/analytics">View Analytics</a>
 </div>
 
 <script>
 const video = document.getElementById("video");
 const statusText = document.getElementById("statusText");
+const predictiveText = document.getElementById("predictiveText");
 const alertCount = document.getElementById("alertCount");
 const totalChecks = document.getElementById("totalChecks");
 const safetyScore = document.getElementById("safetyScore");
-const startBtn = document.getElementById("startBtn");
 
 let monitoring = false;
 
-/* ---------------- CAMERA SETUP ---------------- */
-
+// Camera
 navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => {
-    video.srcObject = stream;
-})
-.catch(err => {
-    alert("Camera access denied. Please allow camera permission.");
-});
+.then(stream => video.srcObject = stream)
+.catch(err => alert("Camera access denied"));
 
-/* ---------------- START MONITORING ---------------- */
+async function startSession() {
 
-startBtn.addEventListener("click", async () => {
+    const occupation = document.getElementById("occupation").value;
+    const route = document.getElementById("route").value;
 
-    if (monitoring) return;
+    const res = await fetch("/start-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ occupation: occupation, route: route })
+    });
 
-    const res = await fetch("/start-session", { method: "POST" });
+    const data = await res.json();
 
-    if (!res.ok) {
-        alert("Failed to start session");
-        return;
+    if (data.predictive_risk === "HIGH") {
+        predictiveText.innerHTML = "⚠ HIGH PREDICTIVE RISK";
+        predictiveText.className = "alert";
+    } else {
+        predictiveText.innerHTML = "Predictive Risk: LOW";
+        predictiveText.className = "safe";
     }
 
     monitoring = true;
-    startBtn.innerText = "Monitoring Started";
     processFrame();
-});
-
-/* ---------------- FRAME PROCESSING LOOP ---------------- */
+}
 
 async function processFrame() {
-
     if (!monitoring) return;
-
-    if (!video.videoWidth) {
-        setTimeout(processFrame, 1000);
-        return;
-    }
 
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0);
 
     const image = canvas.toDataURL("image/jpeg");
 
-    try {
+    const analyzeRes = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: image })
+    });
 
-        // Send frame to backend
-        const analyzeRes = await fetch("/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image: image })
-        });
+    const analyzeData = await analyzeRes.json();
 
-        const analyzeData = await analyzeRes.json();
-
-        if (analyzeData.status === "SAFE") {
-            statusText.innerText = "SAFE";
-            statusText.className = "safe";
-        } else {
-            statusText.innerText = "DROWSY ALERT!";
-            statusText.className = "alert";
-        }
-
-        // Get summary
-        const summaryRes = await fetch("/summary");
-        const summaryData = await summaryRes.json();
-
-        totalChecks.innerText = summaryData.total_checks || 0;
-        alertCount.innerText = summaryData.drowsy_events || 0;
-        safetyScore.innerText = summaryData.safety_score || 100;
-
-    } catch (error) {
-        console.log("Error:", error);
+    if (analyzeData.status === "SAFE") {
+        statusText.innerText = "SAFE";
+        statusText.className = "safe";
+    } else {
+        statusText.innerText = "DROWSY ALERT!";
+        statusText.className = "alert";
     }
 
-    setTimeout(processFrame, 2000);
+    const summaryRes = await fetch("/summary");
+    const summaryData = await summaryRes.json();
+
+    totalChecks.innerText = summaryData.total_checks;
+    alertCount.innerText = summaryData.drowsy_events;
+    safetyScore.innerText = summaryData.safety_score;
+
+    setTimeout(processFrame, 300);
 }
 </script>
 

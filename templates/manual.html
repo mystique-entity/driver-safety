@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manual Driver Safety Entry</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #121212;
+            color: white;
+            text-align: center;
+        }
+
+        .card {
+            background: #1f1f1f;
+            width: 500px;
+            margin: 40px auto;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        input, select {
+            width: 95%;
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #00c853;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #00a843;
+        }
+
+        a {
+            color: #00ff88;
+            text-decoration: none;
+        }
+
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Manual Driver Safety Entry</h2>
+
+    <form action="/add-manual-session" method="POST">
+
+        <label>Driver Name</label><br>
+        <input type="text" name="driver_name" required><br>
+
+        <label>Vehicle Number</label><br>
+        <input type="text" name="vehicle_no" required><br>
+
+        <label>Occupation</label><br>
+        <select name="occupation" required>
+            <option value="Truck Driver">Truck Driver</option>
+            <option value="Bus Driver">Bus Driver</option>
+            <option value="Delivery Driver">Delivery Driver</option>
+            <option value="Taxi Driver">Taxi Driver</option>
+        </select><br>
+
+        <label>Route</label><br>
+        <input type="text" name="route" required><br>
+
+        <label>Shift Start Time</label><br>
+        <input type="time" name="shift_start" required><br>
+
+        <label>Shift End Time</label><br>
+        <input type="time" name="shift_end" required><br>
+
+        <label>Time of Drowsy Incident</label><br>
+        <input type="time" name="incident_time" required><br>
+
+        <label>Total Monitoring Checks</label><br>
+        <input type="number" name="total_checks" min="1" required><br>
+
+        <label>Drowsy Events</label><br>
+        <input type="number" name="drowsy_events" min="0" required><br>
+
+        <button type="submit">Submit Session</button>
+
+    </form>
+
+    <br>
+    <a href="/analytics">View Analytics Dashboard</a>
+</div>
+
+</body>
+</html>
