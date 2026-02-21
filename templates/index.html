@@ -22,6 +22,16 @@
 
         .safe { color: #00ff88; }
         .alert { color: #ff4c4c; }
+
+        .card {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1f1f1f;
+            width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -31,46 +41,63 @@
     <video id="video" width="400" autoplay></video>
 
     <div class="status" id="statusText">Monitoring...</div>
-    <div>Alert Count: <span id="alertCount">0</span></div>
 
-    <script>
-        const video = document.getElementById("video");
-        const statusText = document.getElementById("statusText");
-        const alertCount = document.getElementById("alertCount");
+    <div class="card">
+        <p>Alert Count: <span id="alertCount">0</span></p>
+        <p>Total Checks: <span id="totalChecks">0</span></p>
+        <p>Safety Score: <span id="safetyScore">100</span>%</p>
+    </div>
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => video.srcObject = stream);
+<script>
+    const video = document.getElementById("video");
+    const statusText = document.getElementById("statusText");
+    const alertCount = document.getElementById("alertCount");
+    const totalChecks = document.getElementById("totalChecks");
+    const safetyScore = document.getElementById("safetyScore");
 
-        function captureAndSend() {
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0);
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => video.srcObject = stream);
 
-            const image = canvas.toDataURL("image/jpeg");
+    function captureAndSend() {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
 
-            fetch("/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ image: image })
-            })
-            .then(res => res.json())
-            .then(data => {
-                alertCount.innerText = data.alerts;
+        const image = canvas.toDataURL("image/jpeg");
 
-                if (data.status === "SAFE") {
-                    statusText.innerText = "SAFE";
-                    statusText.className = "status safe";
-                } else {
-                    statusText.innerText = "DROWSY ALERT!";
-                    statusText.className = "status alert";
-                }
-            });
-        }
+        fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: image })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "SAFE") {
+                statusText.innerText = "SAFE";
+                statusText.className = "status safe";
+            } else {
+                statusText.innerText = "DROWSY ALERT!";
+                statusText.className = "status alert";
+            }
+        });
+    }
 
-        setInterval(captureAndSend, 3000); // every 3 seconds
-    </script>
+    function fetchSummary() {
+        fetch("/summary")
+        .then(res => res.json())
+        .then(data => {
+            totalChecks.innerText = data.total_checks;
+            alertCount.innerText = data.drowsy_events;
+            safetyScore.innerText = data.safety_score;
+        });
+    }
+
+    setInterval(captureAndSend, 5000);
+    setInterval(fetchSummary, 5000);
+
+</script>
 
 </body>
 </html>

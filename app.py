@@ -2,11 +2,29 @@ from flask import Flask, render_template, request, jsonify
 import cv2
 import numpy as np
 import base64
+import sqlite3
 import datetime
 
 app = Flask(__name__)
 
-drowsy_count = 0
+# ---------- DATABASE SETUP ----------
+
+def init_db():
+    conn = sqlite3.connect("driver_data.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            status TEXT,
+            timestamp TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------- ROUTES ----------
 
 @app.route("/")
 def home():
@@ -14,11 +32,9 @@ def home():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    global drowsy_count
-    
     data = request.json["image"]
     
-    # Decode base64 image
+    # Decode image
     image_data = base64.b64decode(data.split(",")[1])
     np_arr = np.frombuffer(image_data, np.uint8)
     img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -35,13 +51,35 @@ def analyze():
 
     if len(faces) == 0:
         status = "DROWSY"
-        drowsy_count += 1
+
+    # Save to database
+    conn = sqlite3.connect("driver_data.db")
+    c = conn.cursor()
+    c.execute("INSERT INTO events (status, timestamp) VALUES (?, ?)",
+              (status, str(datetime.datetime.now())))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": status})
+
+@app.route("/summary")
+def summary():
+    conn = sqlite3.connect("driver_data.db")
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM events")
+    total = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM events WHERE status='DROWSY'")
+    drowsy = c.fetchone()[0]
+
+    conn.close()
 
     return jsonify({
-        "status": status,
-        "alerts": drowsy_count,
-        "time": str(datetime.datetime.now())
+        "total_checks": total,
+        "drowsy_events": drowsy,
+        "safety_score": round((1 - (drowsy/total)) * 100, 2) if total > 0 else 100
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
